@@ -1,0 +1,42 @@
+# Python
+*.pyc
+*.pyo
+__pycache__/
+*.pyd
+
+# Ambiente
+.env
+.env.*
+*.env
+
+# Banco de dados
+*.db
+*.sqlite
+*.sqlite3
+
+# LaTeX
+*.aux
+*.log
+*.toc
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+logs/
+*.log
