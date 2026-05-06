@@ -40,3 +40,6 @@ desktop.ini
 # Logs
 logs/
 *.log
+
+# Repositório aninhado
+docs/DW/dags/
