@@ -78,6 +78,23 @@ Schemas pendentes: estoque, eventos, financeiro, homologacao, marft, rh_sci, sus
 | 49 | DEC-049 | jma | `f_tempo_metodo` | **`varchar` sem tamanho** nas colunas `tempo_homem` e `tempo_maquina` — tipo semanticamente incorreto; provavelmente `numeric(10,4)` | Investigar valores reais; converter para `numeric` | ⏳ Pendente |
 | 50 | DEC-050 | ti | `fdemandas` (projetos) | **`id` e `cod_projeto` aparentemente com mesmo valor** — duplicação de coluna? | Verificar `SELECT id, cod_projeto FROM ti.fdemandas WHERE id <> cod_projeto LIMIT 10` | ⏳ Pendente |
 | 51 | DEC-051 | stage | todas as tabelas `stg_*` | **Ausência de colunas de auditoria padronizadas** nas tabelas staging (`stg_*`) — sem `created_at`/`updated_at`/`dw_load_ts` | Adicionar `dw_load_ts timestamp DEFAULT current_timestamp` em todas as tabelas stg_* | ⏳ Pendente |
+| 52 | DEC-052 | comercial | `fmeta_representante_orion`, `fmeta_representante` | **Duas tabelas de metas por representante** — possivelmente mesma fonte com origens diferentes (Orion vs sistema base) | Verificar `COUNT(*), MIN(data), MAX(data)` em ambas; consolidar em `f_meta_representante` com coluna `ds_origem` | ⏳ Pendente |
+| 53 | DEC-053 | comercial | `fnotas_venda_produtos` | **`cod_representante int4`** — código de representante como inteiro; padrão do DW exige `varchar(6)` (LPAD com zeros à esquerda) | Converter para `varchar(6)` via `LPAD(cod_representante::text, 6, '0')` | ⏳ Pendente |
+| 54 | DEC-054 | ppcp | `flista_prioridades` | **`id float8`** — chave primária como ponto flutuante; precisão indeterminada e arriscada | Converter para `integer` ou `bigint`; revisar pipeline de carga | ⏳ Pendente |
+| 55 | DEC-055 | suprimentos | `fprojeto_obc` | **Colunas com espaço no nome** — impossível referenciar sem aspas duplas em SQL; viola padrão snake_case | Renomear todas as colunas via `ALTER TABLE ... RENAME COLUMN`; prioridade alta | ⏳ Pendente |
+| 56 | DEC-056 | ti | `forus_resumo_sprint` | **3 colunas com espaço no nome** — impossível usar em queries sem aspas duplas | Renomear via `ALTER TABLE ... RENAME COLUMN` para snake_case | ⏳ Pendente |
+| 57 | DEC-057 | jma | `fmeta_diario_loja`, `fmeta_semanal_loja`, `fmeta_mensal_loja`, `fmeta_loja` | **4 tabelas de metas com granularidades diferentes** — duplicação de lógica de cálculo; possíveis discrepâncias entre agregações | Consolidar em `f_meta_loja` com coluna `id_granularidade` (D/S/M); ou definir uma como fonte única e demais como views materializadas | ⏳ Pendente |
+| 58 | DEC-058 | jma | `ffaturamento`, `ffaturamento_eua`, `ffaturamento_internacional`, `ffaturamento_nacional`, `ffaturamento_dev`, `ffaturamento_dev_inc` | **6 tabelas de faturamento com escopos diferentes** — risco de dupla contagem ou faturamento perdido entre escopos; sem visão unificada | Criar `f_faturamento` única com coluna `id_escopo` (NACIONAL/INTERNACIONAL/EUA/DEV); manter views por compatibilidade | ⏳ Pendente |
+| 59 | DEC-059 | jma | `fmovimentos_loja`, `fmovimentosinteg`, `fmovimentoslojamicrovix` | **3 tabelas de movimentação de loja** — fontes (Systextil, integradores externos, Microvix) sem rastreabilidade clara em coluna `ds_origem` | Consolidar em `f_movimento_loja` com `id_sistema_origem`; manter origens preservadas | ⏳ Pendente |
+| 60 | DEC-060 | jma | `dfuncionariosinteg` | **`cod_vendedor int4` sem dimensão `d_vendedor` consolidada** — campo tratado como business key sem dimensão de referência cross-schema | Avaliar elevação de `d_funcionario_integ` para dimensão canônica de vendedor; ou criar bridge `d_vendedor` cross-schema | ⏳ Pendente |
+| 61 | DEC-061 | jma | `fpedidos_url`, `fvendas_url` | **Sufixo `_url` ambíguo** — sem documentação de qual é a "URL" referenciada; possivelmente origem ecommerce/site | Padronizar para `_ecommerce` ou `_site`; documentar fonte real dos dados | ⏳ Pendente |
+| 62 | DEC-062 | jma | `confer_caixas` (sem prefixo) e `fconfer_caixas` | **Tabela sem prefixo coexiste com versão prefixada** — possível duplicação de carga; finalidade da tabela base sem prefixo desconhecida | Verificar conteúdo de ambas; consolidar em `f_conferencia_caixa`; deprecar a sem prefixo | ⏳ Pendente |
+| 63 | DEC-063 | jma | múltiplas dimensões | **`pk_*` reutilizado como business key** em ~14 dimensões (`pk_aparelho`, `pk_grupo_contas`, `pk_historico`, `pk_familia`, `pk_periodo`, etc.) — viola padrão `id` (surrogate) + `cod_/id_` (business key) | Aplicar regra geral DEC-006 ao schema jma; cronograma específico por tabela | ⏳ Pendente |
+| 64 | DEC-064 | jma | `dprodutoproducao`, `f_faturamento`, `f_movimento_loja_microvix`, várias tabelas | **`numeric(38,10)` espalhado em 30+ colunas** (legado da carga Oracle sem cast) — desperdício de armazenamento; precisão absurda | Mapear via `information_schema.columns WHERE numeric_precision = 38`; reduzir para tipos semânticos (Script 5.5 do DICIONARIO_DADOS_JMA.md) | ⏳ Pendente |
+| 65 | DEC-065 | jma | `dnatureza_operacao`, `dsituacao_venda`, `dstatus_pedido`, `dsituacaopedido` | **4 dimensões de status/situação com escopos sobrepostos** — risco de inconsistência ao classificar pedido vs nota | Consolidar `dsituacaopedido` e `dstatus_pedido`; manter `dnatureza_operacao` separada (escopo fiscal) | ⏳ Pendente |
+| 66 | DEC-066 | jma | `dtabelapreco` + `ftabelapreco` | **Mistura de dimensão e fato no mesmo conceito** — `dtabelapreco` é cabeçalho, `ftabelapreco` é item; nome confunde | Renomear para `d_tabela_preco` (cabeçalho) + `f_tabela_preco_item` (já contemplado no dicionário) | ⏳ Pendente |
+| 67 | DEC-067 | jma | `dfuncionariosinteg.cnpj varchar(40)` | **CNPJ com 40 chars** — quase 3x maior que o necessário; possível mistura de `nm_loja` no campo | Validar `MAX(LENGTH(cnpj))`; reformatar via `dw.fn_formatar_cnpj_cpf`; renomear para `cnpj_loja varchar(16)` | ⏳ Pendente |
+| 68 | DEC-068 | jma | `fdre_lojas`, `fdre_orcado_lojas` | **Realizado vs Orçado em tabelas separadas** — análises comparativas exigem JOIN custoso; possível desnormalização ineficiente | Avaliar consolidação em `f_dre_loja` com coluna `id_tipo` (REAL/ORCADO); ou criar view `vw_dre_realizado_vs_orcado` | ⏳ Pendente |
 
 ---
 
@@ -106,10 +123,10 @@ Schemas pendentes: estoque, eventos, financeiro, homologacao, marft, rh_sci, sus
 | Categoria | Qtd | Itens |
 |-----------|-----|-------|
 | 🔴 Críticos | 5 | DEC-007, DEC-021, DEC-022, DEC-023, DEC-024 |
-| ⚠️ Alta Prioridade | 26 | DEC-001, DEC-003–006, DEC-009, DEC-015–016, DEC-025–041 |
-| ℹ️ Média Prioridade | 20 | DEC-002, DEC-008, DEC-010–014, DEC-018–020, DEC-042–051 |
+| ⚠️ Alta Prioridade | 39 | DEC-001, DEC-003–006, DEC-009, DEC-015–016, DEC-025–041, DEC-052–054, DEC-055–056, DEC-057–064 |
+| ℹ️ Média Prioridade | 24 | DEC-002, DEC-008, DEC-010–014, DEC-018–020, DEC-042–051, DEC-065–068 |
 | 🔁 Duplicatas | 7 | jma/live (canal, produto, cc), rh/jma (fdre), suprimentos (notas), comercial (fpedido), api (vitrine) |
-| **Total** | **58** | — |
+| **Total** | **75** | — |
 
 ---
 
@@ -356,6 +373,129 @@ Schemas pendentes: estoque, eventos, financeiro, homologacao, marft, rh_sci, sus
 
 ---
 
+## 📑 Apêndice: Conflitos Identificados por Schema
+
+> Esta seção organiza todos os conflitos por schema para facilitar revisão por área. Cada item referencia o `DEC-xxx` correspondente nas tabelas acima.
+
+### Schema `api`
+
+| Conflito | DEC | Status |
+|----------|-----|--------|
+| Duplicidade entre `vitrine`, `vitrine_checklist` e `vitrine_questions` — avaliar consolidar | Duplicatas #7 | ⏳ Pendente |
+| Colunas de data como varchar em `vitrine_indicators_stores` (`date_start`, `date_end`, `executiondate`) | DEC-036 | ⏳ Pendente |
+| Idioma em inglês mantido (rastreabilidade da API) | DEC-002 | ⏳ Pendente |
+
+### Schema `comercial`
+
+| Conflito | DEC | Status |
+|----------|-----|--------|
+| `fpedido.ped_cdrep (int4)` vs `fpedido.fk_representante (varchar(6))` — dois campos para mesmo representante com tipos diferentes | DEC-025 | ⏳ Pendente |
+| `fpedido` vs `fpedido_showroom` — estruturas idênticas; consolidar | DEC-026 / Duplicatas #6 | ⏳ Pendente |
+| `fmeta_representante_orion` vs `fmeta_representante` — verificar se mesma fonte | DEC-052 | ⏳ Pendente |
+| `cod_representante int4` em `fnotas_venda_produtos` — converter para `varchar(6)` | DEC-053 | ⏳ Pendente |
+| `fpedido` mistura cabeçalho e item — separar | DEC-004 | ⏳ Pendente |
+| `cod_cliente` com tipos inconsistentes | DEC-003 | ⏳ Pendente |
+| `cnpj_repres int8` em `drepresentante` — converter para `varchar(16)` | DEC-007 | ⏳ Pendente |
+
+### Schema `live`
+
+| Conflito | DEC | Status |
+|----------|-----|--------|
+| `dcliente.cnpj_cliente varchar(120)` — muito grande; reformatar para `varchar(16)` | DEC-027 | ⏳ Pendente |
+| `dlojas.pk_cnpj varchar(35)` — reformatar para `cnpj_loja varchar(16)` | DEC-028 | ⏳ Pendente |
+| `dproduto.sku_produto varchar(120)` — corrigir para `varchar(30)` | DEC-029 | ⏳ Pendente |
+| `dcanaldistribuicao` duplicada em `live` e `jma` | Duplicatas #1 | ⏳ Pendente |
+| `dproduto` vs `dprodutoproducao` (jma) — sobreposição | DEC-017 / Duplicatas #2 | ⏳ Pendente |
+| `d_centro_custo` duplicado em `live` e `ppcp` | Duplicatas #3 | ⏳ Pendente |
+
+### Schema `ppcp`
+
+| Conflito | DEC | Status |
+|----------|-----|--------|
+| `dcad_centro_custo` duplicado em `ppcp` e `live` | Duplicatas #3 | ⏳ Pendente |
+| `cnpj_forn varchar(184)` em múltiplas tabelas — reformatar | DEC-024 | ⏳ Pendente |
+| `cd_nivel99 float8` em `fordens_corte` — deve ser `varchar(1)` | DEC-032 | ⏳ Pendente |
+| `flista_prioridades.id float8` — deve ser `integer` | DEC-054 | ⏳ Pendente |
+| `cd_ordem_producao text` em `fordens_produzidas` — converter para `integer` | DEC-033 | ⏳ Pendente |
+| `turno numeric(38)` em `fproducao_seda` — alterar para `smallint` | DEC-034 | ⏳ Pendente |
+| `fk_produto` com tamanhos inconsistentes — padronizar `sku_produto varchar(30)` | DEC-035 | ⏳ Pendente |
+| `maquina` sem prefixo em `fmaquinas_divisao_externa` | DEC-008 | ⏳ Pendente |
+| `fk_componente` — verificar existência de `d_componente` | DEC-011 | ⏳ Pendente |
+| `sugcancelproducao` — tipo semântico indefinido | DEC-012 | ⏳ Pendente |
+| `faccao` — verificar existência de `d_faccao` | DEC-013 | ⏳ Pendente |
+| Colunas marcadas para DROP — confirmar exclusão | DEC-009 | ⏳ Pendente |
+
+### Schema `rh`
+
+| Conflito | DEC | Status |
+|----------|-----|--------|
+| `cod_colaborador` não está definido — derivar de `cd_funcionario varchar(9)` | DEC-045 | ⏳ Pendente |
+| Campos hora como varchar (HH:MM) — definir conversão | DEC-031 | ⏳ Pendente |
+| `fdre_lojas` duplicada em `rh` e `jma` | Duplicatas #4 | ⏳ Pendente |
+| Mix de Senior RH e Employer no mesmo schema | DEC-044 | ⏳ Pendente |
+| Campos de data fracionados como `numeric(38,10)`/`float8` | DEC-030 | ⏳ Pendente |
+| `cpf varchar(11)` sem formatação | DEC-041 | ⏳ Pendente |
+| `freajuste.ultima_atualizacao date` (deveria ser `timestamp`) | DEC-040 | ⏳ Pendente |
+
+### Schema `suprimentos`
+
+| Conflito | DEC | Status |
+|----------|-----|--------|
+| Colunas com acentos em `dfornecedor_produto` — renomear urgente | DEC-023 | 🔴 Crítico |
+| Colunas com espaços em `fprojeto_obc` — renomear urgente | DEC-055 | ⏳ Pendente |
+| `fnota_entrada` vs `fnota_entrada2` — verificar redundância | Duplicatas #5 | ⏳ Pendente |
+| Colunas de data como `text` em múltiplas tabelas | DEC-037 | ⏳ Pendente |
+| `f_compra_bi` materializada vs view sobre `f_obc_sdcv_detalhe` | DEC-042 | ⏳ Pendente |
+
+### Schema `ti`
+
+| Conflito | DEC | Status |
+|----------|-----|--------|
+| `forus_resumo_sprint` tem 3 colunas com espaço no nome — prioridade alta | DEC-056 | ⏳ Pendente |
+| `dorion_projetos.id` vs `cod_projeto` — verificar se redundantes | DEC-050 | ⏳ Pendente |
+
+### Schema `stage`
+
+| Conflito | DEC | Status |
+|----------|-----|--------|
+| 4 tabelas de movimentação com estrutura similar — consolidar | DEC-043 | ⏳ Pendente |
+| Ausência de colunas de auditoria padronizadas em `stg_*` | DEC-051 | ⏳ Pendente |
+
+### Schema `jma`
+
+> Conflitos identificados durante a criação de `dicionarios/DICIONARIO_DADOS_JMA.md` (71 tabelas).
+
+| Conflito | DEC | Status |
+|----------|-----|--------|
+| `ffaturamento_dev_inc` — 53 colunas em UPPER_CASE com aspas duplas | DEC-021 | 🔴 Crítico |
+| `ffaturamento_eua` — colunas com nomes de funções SQL (`SUM(DADOS.QUANTIDADE)`) | DEC-022 | 🔴 Crítico |
+| `fhists_mov_` — typo no nome da tabela (trailing underscore) | DEC-038 | ⚠️ Alta |
+| 5 tabelas sem `created_at`/`updated_at` (`f_controle_partes`, `f_monitor_producao`, `f_movimentos_loja_microvix`, `f_requisicao_compra`, `f_pedido_congelado_motivo_bloqueio`) | DEC-039 | ⚠️ Alta |
+| `numeric(38,10)` em 30+ colunas (legado Oracle) | DEC-046 / DEC-064 | ⚠️ Alta |
+| `nf_cdrep float8` em `f_faturamento` — deve ser `cod_representante varchar(6)` | DEC-047 | ⚠️ Alta |
+| `f_tempo_metodo` — `varchar` sem tamanho em `tempo_homem`/`tempo_maquina` | DEC-049 | ⚠️ Alta |
+| Schema `jma` — permanente ou temporário? 71 tabelas com aparência de pertencer a `comercial` | DEC-001 | ⚠️ Alta |
+| `dcanaldistribuicao` duplicada com `live` | Duplicatas #1 | ⚠️ Alta |
+| `dprodutoproducao` sobrepõe `live.dproduto` | Duplicatas #2 | ⚠️ Alta |
+| `fdre_lojas` duplicada com `rh` | Duplicatas #4 | ⚠️ Alta |
+| 4 tabelas de meta (`fmeta_diario_loja`, `fmeta_semanal_loja`, `fmeta_mensal_loja`, `fmeta_loja`) com granularidades diferentes | DEC-057 | ⚠️ Alta |
+| 6 tabelas de faturamento com escopos diferentes (`ffaturamento`, `_eua`, `_internacional`, `_nacional`, `_dev`, `_dev_inc`) | DEC-058 | ⚠️ Alta |
+| 3 tabelas de movimento de loja (`fmovimentos_loja`, `fmovimentosinteg`, `fmovimentoslojamicrovix`) | DEC-059 | ⚠️ Alta |
+| `dfuncionariosinteg.cod_vendedor` sem dimensão `d_vendedor` consolidada | DEC-060 | ⚠️ Alta |
+| `fpedidos_url`, `fvendas_url` — sufixo `_url` ambíguo | DEC-061 | ⚠️ Alta |
+| `confer_caixas` (sem prefixo) coexiste com `fconfer_caixas` | DEC-062 / DEC-018 | ⚠️ Alta |
+| `pk_*` reutilizado como business key em ~14 dimensões | DEC-063 / DEC-006 | ⚠️ Alta |
+| 4 dimensões de status/situação com escopos sobrepostos | DEC-065 | ℹ️ Média |
+| `dtabelapreco` (cabeçalho) + `ftabelapreco` (item) — nomenclatura confusa | DEC-066 | ℹ️ Média |
+| `dfuncionariosinteg.cnpj varchar(40)` — quase 3x maior que necessário | DEC-067 | ℹ️ Média |
+| `fdre_lojas` vs `fdre_orcado_lojas` — realizado vs orçado em tabelas separadas | DEC-068 | ℹ️ Média |
+| `ped_cong_motivo_bloqueio` sem prefixo de tipo | DEC-018 | ℹ️ Média |
+| Tipo canônico de `cod_portador` indefinido (`jma.ddeposito`) | DEC-014 | ℹ️ Média |
+| Tabelas sem `updated_at` — estratégia de carga incremental | DEC-016 | ⚠️ Alta |
+
+---
+
 *Documento gerado em 2026-05-06 — Fase 2 de Padronização DW Live*
-*Versão: 2.0 | Padrão: BOAS_PRATICAS_DW.md v2.0*
+*Versão: 2.1 | Padrão: BOAS_PRATICAS_DW.md v2.0*
 *Schemas com dicionário concluído: api, comercial, jma, live, ppcp, rh, stage, suprimentos, ti*
+*Última atualização: adição de DEC-052 a DEC-068 + apêndice por schema (após geração do DICIONARIO_DADOS_JMA.md)*
