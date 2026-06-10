@@ -36,6 +36,8 @@ Knowledge Base/
 │   ├── Orion/                     # Documentação do ERP Orion
 │   ├── Senior/                    # Documentação do ERP Senior
 │   └── Systextil/                 # Documentação do ERP Systextil
+├── Queries_Alteradas/             # Delta de queries do DW p/ a próxima entrega Abstrato (por schema)
+├── PowerBI/                       # Relatórios e dashboards (.pbix via Git LFS)
 ├── documentacao_dw_queries.md     # Boas práticas para documentar queries
 └── padronizacao_de_nomenclatura_de_tabelas_dw.md  # Convenções de nomenclatura
 ```
@@ -50,6 +52,8 @@ Knowledge Base/
 | Consultar os padrões vigentes | [docs/DW/BOAS_PRATICAS_DW.md](docs/DW/BOAS_PRATICAS_DW.md) |
 | Ver o que está pendente de decisão | [docs/DW/CONFLITOS_E_DECISOES_PENDENTES.md](docs/DW/CONFLITOS_E_DECISOES_PENDENTES.md) |
 | Entender o tamanho do DW | [docs/DW/_inventario_dw.md](docs/DW/_inventario_dw.md) |
+| Acompanhar queries alteradas p/ próxima entrega Abstrato | [Queries_Alteradas/](Queries_Alteradas/) |
+| Acessar relatórios Power BI | [PowerBI/](PowerBI/) |
 
 ---
 
